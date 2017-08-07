@@ -126,7 +126,7 @@ NumericMatrix TrainCollapsedGibbs(SEXP docs_in, int K, int V, SEXP eta_in, SEXP 
         alpha_sum += alpha(k);
     }
     double eta_sum = 0;
-    for (int v = 0; v < K; v++) {
+    for (int v = 0; v < V; v++) {
         eta_sum += eta(v);
     }
     

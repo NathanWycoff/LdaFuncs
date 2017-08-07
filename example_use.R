@@ -52,26 +52,6 @@ Ns <- ret$Ns
 BETA <- ret$BETA
 THETA <- ret$THETA
 
-sourceCpp("variational_lda.cpp")
+sourceCpp("collapsed_gibbs.cpp")
 
-em_threshes <- c(0.1, 0.01, 0.001)
-e_threshes <- c(0.1, 0.01, 0.001)
-
-cool_matrix_distance <- function(m1, m2) {
-    alt_m1 <- matrix(c(0,1,1,0),ncol = 2) %*% m1
-    return(min(c(norm(m1-m2), norm(alt_m1-m2))))
-}
-
-t <- c()
-diff <- c()
-vals <- c()
-seed <- 1
-for (em_thresh in em_threshes) {
-    for (e_thresh in e_threshes) {
-        vals <- rbind(vals, c(em_thresh, e_thresh))
-        t <- c(t, system.time(BETA_est <- RVariationalEM(docs, alpha, 0.5, K, V, em_thresh, e_thresh, 100, 100, seed))[1])
-        diff <- c(diff, cool_matrix_distance(t(BETA_est), BETA))
-    }
-}
-
-plot(t, diff)
+TrainCollapsedGibbs(docs, K, V, eta, alpha, 500, 1, 123)
