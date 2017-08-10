@@ -57,7 +57,7 @@ THETA <- ret$THETA
 sourceCpp("cvb0.cpp")
 sourceCpp("variational_lda.cpp")
 
-thresh <- 0.001
+thresh <- 0.00001
 max_iters <- 2000
 #set.seed(1234)
 seeds <- sample(1000, 3)
@@ -68,7 +68,7 @@ seed <- 19
 i <- 1
 for (seed in seeds) {
     print(i)
-    BETA_est <- RCVBZero(docs, alpha, eta, K, V, thresh, max_iters, seed)
+    BETA_est <- RCVBZero(docs, alpha, eta, K, V, thresh, 100, seed)
     ests[[i]] <- BETA_est
     i <- i + 1
 }

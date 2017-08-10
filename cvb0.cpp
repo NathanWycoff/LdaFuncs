@@ -22,6 +22,26 @@ double RandUnif() {
     return ((double)rand()/(double)RAND_MAX);
 }
 
+
+/* Function: LinfDistance
+ * ----------------------------------------------
+ * Get l_{infty} norm (max absolute difference) between two vectors of length N
+ */
+double LinfDistance(double *vec1, double *vec2, int N) {
+    double max = 0;
+    double absdiff;
+    double val1, val2;
+    for (int n = 0; n < N; n++) {
+        val1 = *(vec1 + n);
+        val2 = *(vec2 + n);
+        absdiff = std::abs(val1 - val2);
+        if (absdiff > max) {
+            max = absdiff;
+        }
+    }
+    return max;
+}
+
 /*
  * Function: InitPHIS
  * ----------------------------------------------
@@ -264,10 +284,13 @@ NumericMatrix TestNwk(List docs_in, int K, int V, NumericVector eta, int seed) {
  * K: The number of topics
  *
  * V: The size of the vocab
+ *
+ * Returns: The maximum change in this iteration for convergence evaluation purposes.
  */
-void DoCollapsedStep(int **docs, double *Nwk, double *Nmk, double *Nk, double **PHIS, int *Ns, int M, int K, int V) {
+double DoCollapsedStep(int **docs, double *Nwk, double *Nmk, double *Nk, double **PHIS, int *Ns, int M, int K, int V) {
     int N, w;
-    double phi, vocab_part, doc_part, row_sum, new_val;
+    double phi, vocab_part, doc_part, row_sum, new_val, change;
+    double *phis_old = (double *)malloc(K * sizeof(double));//To store the old values of PHI on each iter
     double *PHI;
     int *doc;
     double max_change = 0.0;
@@ -284,6 +307,7 @@ void DoCollapsedStep(int **docs, double *Nwk, double *Nmk, double *Nk, double **
                 *(Nwk + w*K + k) -= phi;
                 *(Nmk + m*K + k) -= phi;
                 *(Nk + k) -= phi;
+                *(phis_old + k) = phi;
 
                 //Calculate something propto the expected topic assignments
                 vocab_part = *(Nwk + w * K + k) / *(Nk + k);
@@ -306,8 +330,18 @@ void DoCollapsedStep(int **docs, double *Nwk, double *Nmk, double *Nk, double **
                 *(Nmk + m*K + k) += phi;
                 *(Nk + k) += phi;
             }
+            
+            //Get the changes for this iteration
+            for (int k = 0; k < K; k++) {
+                change = std::abs(*(phis_old + k) - *(PHI + n*K + k));
+                if (change > max_change) {
+                    max_change = change;
+                }
+            }
         }
     }
+
+    return max_change;
 }
 
 
@@ -336,26 +370,25 @@ void DoCollapsedStep(int **docs, double *Nwk, double *Nmk, double *Nk, double **
  * 
  * seed: The seed for random number generation.
  */
-double **CVBZero(int **docs, int *Ns, double *alpha, double *eta, int K, int V, int M, double thresh, int max_iters, int seed) {
+double *CVBZero(int **docs, int *Ns, double *alpha, double *eta, int K, int V, int M, double thresh, int max_iters, int seed) {
     srand(seed);
-    //std::cout << "Initing PHIS" << std::endl;
     //Randomly init the word-topic assignments
     double **PHIS = InitPHIS(Ns, M, K);
 
     //Initialize our counts based on PHI
-    //std::cout << "Initing Nwk" << std::endl;
     double *Nwk = InitNwk(PHIS, docs, Ns, eta, M, K, V);
-    //std::cout << "Initing Nmk" << std::endl;
     double *Nmk = InitNmk(PHIS, Ns, alpha, M, K);
-    //std::cout << "Initing Nk" << std::endl;
     double *Nk = InitNk(Nmk, M, K);
 
     int iter = 0;
     double diff = DBL_MAX;
     while (iter < max_iters && diff > thresh) {
         iter += 1;
-        //std::cout << iter << std::endl;
-        DoCollapsedStep(docs, Nwk, Nmk, Nk, PHIS, Ns, M, K, V);
+        diff = DoCollapsedStep(docs, Nwk, Nmk, Nk, PHIS, Ns, M, K, V);
+    }
+
+    if (iter == max_iters) {
+        std::cout << "WARN: Convergence Failure in CVBZero -- Reached max_iters" << std::endl;
     }
 
     //Normalize Nwk so it becomes BETA
@@ -383,17 +416,38 @@ double **CVBZero(int **docs, int *Ns, double *alpha, double *eta, int K, int V, 
     free(docs);
     free(Ns);
 
+    return Nwk;
+
 }
 
+/*
+ * Function: RCVBZero
+ * ----------------------------------------------
+ * An R function which wraps CVBZero, does inference on LDA using collapsed variaitonal bayes.
+ *
+ * docs: A list of integer arrays, the indices in the vocab for the words in each doc
+ *
+ * alpha_in: A double array containing the topic prevalence prior params
+ *
+ * eta_in: A double array containing the word prevalence prior params
+ *
+ * K: The number of topics
+ *
+ * V: The size of the vocab
+ *
+ * thresh: The threshold for convergence; if the maximal abs difference among all variational params is below this on one iteration, the algorithm will converge successfully.
+ *
+ * max_iters: The maximum allowable iterations.
+ * 
+ * seed: The seed for random number generation.
+ */
 // [[Rcpp::export]]
 NumericMatrix RCVBZero(List docs_in, NumericVector alpha_in, NumericVector eta_in, int K, int V, double thresh, int max_iters, int seed) {
     //Turn the inputs into something consumeable by C
     //Store the hyperparams
-    //std::cout << "Staring Solver" << std::endl;
     double *alpha = alpha_in.begin();
     double *eta = eta_in.begin();
 
-    //std::cout << "Storing doc sizes" << std::endl;
     //Store the documents and their sizes.
     int M = docs_in.size();
     // The inplace method is producing a strange bug at present, but this is quicker.
@@ -419,6 +473,10 @@ NumericMatrix RCVBZero(List docs_in, NumericVector alpha_in, NumericVector eta_i
         }
         *(docs + m) = doc;
     }
-    //Note this automatically transposes the matrix
+
+    //Run the actual C script.
+    double *Nwk = CVBZero(docs, Ns, alpha, eta, K, V, M, thresh, max_iters ,seed);
+
+    //Note this automatically transposes the matrix, as desired.
     return NumericMatrix(K, V, Nwk);
 }

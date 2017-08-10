@@ -54,6 +54,5 @@ Ns <- ret$Ns
 BETA <- ret$BETA
 THETA <- ret$THETA
 
-sourceCpp("collapsed_gibbs.cpp")
-
-TrainCollapsedGibbs(docs, K, V, eta, alpha, 500, 1, 123)
+col.iters <- 100
+full.iters <- 100
