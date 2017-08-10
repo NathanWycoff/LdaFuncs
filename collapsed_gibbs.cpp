@@ -75,10 +75,16 @@ List InitZ(int M, IntegerVector Ns, int K) {
     return Z;
 }
 
-// Generate a random uniform integer.
+
+/*
+ * Function: RandUnif
+ * ----------------------------------------------
+ * Generate a random number between 0 and 1 (hopefully pretty uniform).
+ *
+ * returns: A double between 0 and 1.
+ */
 double RandUnif() {
-    double ret=((double)rand()/(double)RAND_MAX);
-    return ret;
+    return ((double)rand()/(double)RAND_MAX);
 }
 
 // Generate a random integer with the probabilites defined in rho

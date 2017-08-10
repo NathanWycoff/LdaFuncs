@@ -1,4 +1,4 @@
-##A generative model for LDA
+#A generative model for LDA
 
 #Imports
 require(MCMCpack)
@@ -44,7 +44,7 @@ gen.lda <- function(K, V, M, N.mu, eta, alpha) {
 #Example Useage.
 K <- 2
 V <- 4
-M <- 100
+M <- 20
 N.mu <- 100
 eta <- rep(1, V)
 alpha <- rep(1, K)
@@ -54,6 +54,28 @@ Ns <- ret$Ns
 BETA <- ret$BETA
 THETA <- ret$THETA
 
-sourceCpp("collapsed_gibbs.cpp")
+sourceCpp("cvb0.cpp")
+sourceCpp("variational_lda.cpp")
 
-TrainCollapsedGibbs(docs, K, V, eta, alpha, 500, 1, 123)
+thresh <- 0.001
+max_iters <- 2000
+#set.seed(1234)
+seeds <- sample(1000, 3)
+ests <- list()
+i <- 1
+seed <- 19
+
+i <- 1
+for (seed in seeds) {
+    print(i)
+    BETA_est <- RCVBZero(docs, alpha, eta, K, V, thresh, max_iters, seed)
+    ests[[i]] <- BETA_est
+    i <- i + 1
+}
+
+vests <- list()
+i <- 1
+for (seed in seeds) {
+    vests[[i]] <- RVariationalEM(docs, alpha, eta[1], K, V, 0.001, 0.001, 100, 1000, seed)
+    i <- i + 1
+}

@@ -1,11 +1,11 @@
-##A generative model for LDA
-
+#A generative model for LDA
 #Imports
 require(MCMCpack)
 require(mvtnorm)
 require(Rcpp)
 
-set.seed(123)
+set.seed(1)
+
 
 gen.lda <- function(K, V, M, N.mu, eta, alpha) {
     #Generate automatic priors if unspecified
@@ -37,16 +37,16 @@ gen.lda <- function(K, V, M, N.mu, eta, alpha) {
             docs[[m]][n] <- w
         }
     }
-
     return(list('docs' = docs, 'Ns' = Ns, 'BETA' = BETA, 'THETA' = THETA))
 }
 
 #Example Useage.
 K <- 2
-V <- 4
+V <- 2
 M <- 100
-N.mu <- 100
+N.mu <- 50
 eta <- rep(1, V)
+
 alpha <- rep(1, K)
 ret <- gen.lda(K, V, M, N.mu, eta, alpha)
 docs <- ret$docs
@@ -54,6 +54,8 @@ Ns <- ret$Ns
 BETA <- ret$BETA
 THETA <- ret$THETA
 
-sourceCpp("collapsed_gibbs.cpp")
+sourceCpp("min_rep.cpp")
 
-TrainCollapsedGibbs(docs, K, V, eta, alpha, 500, 1, 123)
+i <- sapply(1:100000, function(i) {
+           MinRep(docs, V)
+})

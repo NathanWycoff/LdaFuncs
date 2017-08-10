@@ -227,13 +227,13 @@ void DoEStep(double *PHI, double *gamma, double * BETA, int * doc, double * alph
 }
 
 //M Step - BETA only
-double *DoMStep(double *BETA, double **PHIS, int *Ns, int **docs, int K, int V, int M, double lambda) {
+double *DoMStep(double *BETA, double **PHIS, int *Ns, int **docs, int K, int V, int M, double eta) {
     double *row_sums = (double *)malloc(K * sizeof(double));
-    //Reset BETA to be the prior on words, lambda;
+    //Reset BETA to be the prior on words, eta;
     for (int k = 0; k < K; k++) {
-        *(row_sums + k) = V * lambda;
+        *(row_sums + k) = V * eta;
         for (int v = 0; v < V; v++) {
-            *(BETA + k*V + v) = lambda;
+            *(BETA + k*V + v) = eta;
         }
     }
     
@@ -269,7 +269,7 @@ double *DoMStep(double *BETA, double **PHIS, int *Ns, int **docs, int K, int V, 
 /*
  * A variational EM algorithm for fitting a vanilla LDA model.
  */
-double *VariationalEM(int **docs, int *Ns, double *alpha, double lambda, int K, int V, int M, double e_thresh, double em_thresh, int em_max_iters, int e_max_iters, int seed) {
+double *VariationalEM(int **docs, int *Ns, double *alpha, double eta, int K, int V, int M, double e_thresh, double em_thresh, int em_max_iters, int e_max_iters, int seed) {
     //Initiliaze the differences
     double em_diff = DBL_MAX;
     int iter = 0;
@@ -300,7 +300,7 @@ double *VariationalEM(int **docs, int *Ns, double *alpha, double lambda, int K, 
         }
 
         //M Step
-        DoMStep(new_BETA, PHIS, Ns, docs, K, V, M, lambda);
+        DoMStep(new_BETA, PHIS, Ns, docs, K, V, M, eta);
 
         //Check convergence
         em_diff = 0;
@@ -320,7 +320,7 @@ double *VariationalEM(int **docs, int *Ns, double *alpha, double lambda, int K, 
 
 //An R Wrapper for a C variational EM function, just convert from R-like cpp objects to pointers in memory.
 // [[Rcpp::export]]
-NumericMatrix RVariationalEM(List docs_in, NumericVector alpha, double lambda, int K, int V, double e_thresh, double em_thresh, int em_max_iters, int e_max_iters, int seed) {
+NumericMatrix RVariationalEM(List docs_in, NumericVector alpha, double eta, int K, int V, double e_thresh, double em_thresh, int em_max_iters, int e_max_iters, int seed) {
     int M = docs_in.size();
     IntegerVector current;
     int **docs = (int **)malloc(M * sizeof(int *)); 
@@ -330,6 +330,6 @@ NumericMatrix RVariationalEM(List docs_in, NumericVector alpha, double lambda, i
         *(docs + m) = current.begin();
         *(Ns + m) = current.size();
     }
-    double *BETA = VariationalEM(docs, Ns, alpha.begin(), lambda, K, V, M, e_thresh, em_thresh, em_max_iters, e_max_iters, seed);
+    double *BETA = VariationalEM(docs, Ns, alpha.begin(), eta, K, V, M, e_thresh, em_thresh, em_max_iters, e_max_iters, seed);
     return NumericMatrix(V, K, BETA);
 }
