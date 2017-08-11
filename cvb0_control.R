@@ -54,28 +54,11 @@ Ns <- ret$Ns
 BETA <- ret$BETA
 THETA <- ret$THETA
 
-sourceCpp("cvb0.cpp")
-sourceCpp("variational_lda.cpp")
 
-thresh <- 0.00001
-max_iters <- 2000
-#set.seed(1234)
-seeds <- sample(1000, 3)
-ests <- list()
-i <- 1
-seed <- 19
+sourceCpp("my_weighted_cvb0.cpp")
 
-i <- 1
-for (seed in seeds) {
-    print(i)
-    BETA_est <- RCVBZero(docs, alpha, eta, K, V, thresh, 100, seed)
-    ests[[i]] <- BETA_est
-    i <- i + 1
-}
-
-vests <- list()
-i <- 1
-for (seed in seeds) {
-    vests[[i]] <- RVariationalEM(docs, alpha, eta[1], K, V, 0.001, 0.001, 100, 1000, seed)
-    i <- i + 1
-}
+thresh <- 0.001
+iters <- 100
+seed <- 1234
+weights <- (1:4)*100
+r_weighted_cvb_zero(docs, alpha, eta, K, V, thresh, iters, seed, weights)

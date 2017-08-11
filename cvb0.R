@@ -1,4 +1,4 @@
-cvb0.inference <- function(docs, K, V, eta, alpha, col.iters, full.iters) {
+cvb0.inference <- function(docs, K, V, eta, alpha, iters) {
     ##Collapsed Variational Bayes
     #col.iters is how many iters to do collapsed sampling
     #full.iters is how many iters to also sample THETA and BETA 
@@ -45,7 +45,6 @@ cvb0.inference <- function(docs, K, V, eta, alpha, col.iters, full.iters) {
     BETA.mu <- matrix(0, nrow = K, ncol = V)
     
     #Do the iters!
-    iters <- col.iters + full.iters
     for (iter in 1:iters) {
         ##Update the variational params for each word's topic assignment
         for (m in 1:M) {
@@ -74,14 +73,12 @@ cvb0.inference <- function(docs, K, V, eta, alpha, col.iters, full.iters) {
             }
         }
 
-        if (iter > col.iters) {
-            norm.Nwk <- Nwk / colSums(Nwk)
-            BETA.mu <- BETA.mu + t(norm.Nwk) / full.iters
-        }
     }
 
+    norm.Nwk <- Nwk / colSums(Nwk)
+    BETA.mu <- t(norm.Nwk)
+    GAMMA.mu <- Nmk / rowSums(Nmk)
 
-    print(BETA.mu)
 
     #Randomly init the assignments
     return(BETA.mu)

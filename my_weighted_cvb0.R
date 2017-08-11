@@ -1,7 +1,5 @@
-cvb0.inference <- function(docs, K, V, eta, alpha, col.iters, full.iters) {
-    ##Collapsed Variational Bayes
-    #col.iters is how many iters to do collapsed sampling
-    #full.iters is how many iters to also sample THETA and BETA 
+w.cvb0.inference <- function(docs, K, V, eta, alpha, weights, iters) {
+    ##Collapsed Variational Bayes for weigthed LDA
 
     #Compute doc lengths
     Ns <- sapply(docs, length)
@@ -11,19 +9,22 @@ cvb0.inference <- function(docs, K, V, eta, alpha, col.iters, full.iters) {
     PHIS <- lapply(1:M, function(m) {
                        PHI <- matrix(runif(Ns[m] * K), nrow = Ns[m], ncol = K)
                        PHI <- PHI / rowSums(PHI)
+                       doc_weights <- sapply(docs[[m]], function(n) weights[n])
+                       PHI <- diag(doc_weights) %*% PHI
+                       return(PHI)
     })
 
     #Initialize Nwk and Nmk
     Nwk <- matrix(0, nrow = V, ncol = K)
-        for (k in 1:K) {
-            for (m in 1:M) {
-                for (n in 1:Ns[m]) {
-                    w = docs[[m]][n]
-                    phi = PHIS[[m]][n, k]
-                    Nwk[w, k] = Nwk[w, k] + phi
-                }
+    for (k in 1:K) {
+        for (m in 1:M) {
+            for (n in 1:Ns[m]) {
+                w = docs[[m]][n]
+                phi = PHIS[[m]][n, k]
+                Nwk[w, k] = Nwk[w, k] + phi
             }
         }
+    }
     Nmk <- matrix(0, nrow = M, ncol = K)
     for (m in 1:M) {
         for (k in 1:K) {
@@ -45,7 +46,6 @@ cvb0.inference <- function(docs, K, V, eta, alpha, col.iters, full.iters) {
     BETA.mu <- matrix(0, nrow = K, ncol = V)
     
     #Do the iters!
-    iters <- col.iters + full.iters
     for (iter in 1:iters) {
         ##Update the variational params for each word's topic assignment
         for (m in 1:M) {
@@ -63,7 +63,8 @@ cvb0.inference <- function(docs, K, V, eta, alpha, col.iters, full.iters) {
                     PHIS[[m]][n, k] <- first.term * second.term
                 }
                 #Normalize PHI
-                PHIS[[m]][n,] <- PHIS[[m]][n,] / sum(PHIS[[m]][n,])
+                PHIS[[m]][n,] <- weights[w] * PHIS[[m]][n,] / sum(PHIS[[m]][n,])
+
 
                 #Update the counts
                 for (k in 1:K) {
@@ -74,15 +75,13 @@ cvb0.inference <- function(docs, K, V, eta, alpha, col.iters, full.iters) {
             }
         }
 
-        if (iter > col.iters) {
-            norm.Nwk <- Nwk / colSums(Nwk)
-            BETA.mu <- BETA.mu + t(norm.Nwk) / full.iters
-        }
     }
 
 
-    print(BETA.mu)
+    norm.Nwk <- Nwk / colSums(Nwk)
+    BETA.mu <- t(norm.Nwk)
+    GAMMA.mu <- Nmk / rowSums(Nmk)
 
     #Randomly init the assignments
-    return(BETA.mu)
+    return(list("BETA" = BETA.mu, "GAMMA" = GAMMA.mu))
 }
