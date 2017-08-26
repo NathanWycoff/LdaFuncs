@@ -56,9 +56,15 @@ THETA <- ret$THETA
 
 
 sourceCpp("my_weighted_cvb0.cpp")
+#sourceCpp("cvb0.cpp")
 
 thresh <- 0.001
 iters <- 100
 seed <- 1234
-weights <- (1:4)*100
-r_weighted_cvb_zero(docs, alpha, eta, K, V, thresh, iters, seed, weights)
+
+old_est <- RCVBZero(docs, alpha, eta, K, V ,thresh, iters, seed)
+
+weights <- rep(1,V)
+BETA_in <- r_weighted_cvb_zero_inference(docs, alpha, eta, K, V, thresh, iters, seed, weights)
+GAMMA <- r_weighted_cvb_zero_predict(docs, BETA_in$BETA, alpha, eta, K, V, thresh, iters, seed, weights)
+BETA_in <- wLDA(docs, alpha, eta, K, V, thresh, iters, seed, weights)

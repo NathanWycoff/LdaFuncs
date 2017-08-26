@@ -136,20 +136,6 @@ double *InitNwk(double **PHIS, int **docs, int *Ns, double * eta, int M, int K, 
         for (int n = 0; n < N; n++) {
             w = *(doc + n) - 1;
             for (int k = 0; k < K; k++) {
-                //std::cout << "k:";
-                //std::cout << k;
-                //std::cout <<" n:";
-                //std::cout << n;
-                //std::cout << " w :";
-                //std::cout << w;
-                //std::cout << " m: ";
-                //std::cout << m << std::endl;
-                //std::cout << "Val1:";
-                //val1 = *(Nwk + w*K + k);
-                //std::cout << val1 << std::endl;
-                //std::cout << "Val2:";
-                //val2 = *(PHI + n*K + k);
-                //std::cout << val2 << std::endl;
                 *(Nwk + w*K + k) += *(PHI + n*K + k);
             }
         }
@@ -233,7 +219,7 @@ double *InitNk(double *Nmk, int M, int K) {
  *
  * docs: A list of integer arrays, the indices in the vocab for the words in each doc
  *
- * Nwk: the expected word count by topic matrix
+ * Nwk: the expected word count by topic matrix OR a row-normalized version of this if do_inference is false.
  *
  * Nmk: the expected document by topic matrix
  *
@@ -249,9 +235,11 @@ double *InitNk(double *Nmk, int M, int K) {
  *
  * V: The size of the vocab
  *
+ * do_inference: Should we update Nwk? Set to true if so. Set to false if an out of sample test is desired.
+ *
  * Returns: The maximum change in this iteration for convergence evaluation purposes.
  */
-double DoCollapsedStep(int **docs, double *Nwk, double *Nmk, double *Nk, double **PHIS, int *Ns, int M, int K, int V, double *weights) {
+double DoCollapsedStep(int **docs, double *Nwk, double *Nmk, double *Nk, double **PHIS, int *Ns, int M, int K, int V, double *weights, bool do_inference) {
     int N, w;
     double phi, vocab_part, doc_part, row_sum, new_val, change;
     double *phis_old = (double *)malloc(K * sizeof(double));//To store the old values of PHI on each iter
@@ -268,13 +256,19 @@ double DoCollapsedStep(int **docs, double *Nwk, double *Nmk, double *Nk, double 
             for (int k = 0; k < K; k++) {
                 //Decrement the current word
                 phi = *(PHI + n*K + k);
-                *(Nwk + w*K + k) -= phi;
+                if (do_inference) {
+                    *(Nwk + w*K + k) -= phi;
+                }
                 *(Nmk + m*K + k) -= phi;
                 *(Nk + k) -= phi;
                 *(phis_old + k) = phi;
 
                 //Calculate something propto the expected topic assignments
+                if (do_inference) {
                 vocab_part = *(Nwk + w * K + k) / *(Nk + k);
+                } else {
+                    vocab_part = *(Nwk + w * K + k);
+                }
                 doc_part = *(Nmk + m*K + k);
                 new_val = vocab_part * doc_part;
 
@@ -290,7 +284,9 @@ double DoCollapsedStep(int **docs, double *Nwk, double *Nmk, double *Nk, double 
             //Increment the new vals for the current word.
             for (int k = 0; k < K; k++) {
                 phi = *(PHI + n*K + k);
-                *(Nwk + w*K + k) += phi;
+                if (do_inference) {
+                    *(Nwk + w*K + k) += phi;
+                }
                 *(Nmk + m*K + k) += phi;
                 *(Nk + k) += phi;
             }
@@ -310,7 +306,7 @@ double DoCollapsedStep(int **docs, double *Nwk, double *Nmk, double *Nk, double 
 
 
 /*
- * Function: CVBZero
+ * Function: weighted_cvb_zero_inference
  * ----------------------------------------------
  * Estimate an LDA model using the Collapsed Variational Bayes Zero algorithm, a zeroth order taylor approximation of the collapsed variational bayes algorithm, very similar to collapsed gibbs sampling.
  *
@@ -333,17 +329,19 @@ double DoCollapsedStep(int **docs, double *Nwk, double *Nmk, double *Nk, double 
  * max_iters: The maximum allowable iterations.
  * 
  * seed: The seed for random number generation.
+ *
+ * Returns: A pointer to two pointers: The first is Nwk, the second is Nmk
  */
-double *weighted_cvb_zero(int **docs, int *Ns, double *alpha, double *eta, int K, int V, int M, double thresh, int max_iters, int seed, double *weights_in) {
+double **weighted_cvb_zero_inference(int **docs, int *Ns, double *alpha, double *eta, int K, int V, int M, double thresh, int max_iters, int seed, double *weights_in) {
     srand(seed);
-    //Normalize weights to sum to 1, creating a copy so we don't spook the user.
+    //Normalize weights to sum to V, creating a copy so we don't spook the user.
     double sum = 0.0;
     for (int v = 0; v < V; v++) {
         sum += *(weights_in + v);
     }
     double *weights = (double *)malloc(V * sizeof(double));
     for (int v = 0; v < V; v++) {
-        *(weights + v) = *(weights_in + v) / sum;
+        *(weights + v) = *(weights_in + v) / sum * (double)V;
     }
 
     //Randomly init the word-topic assignments
@@ -356,9 +354,9 @@ double *weighted_cvb_zero(int **docs, int *Ns, double *alpha, double *eta, int K
 
     int iter = 0;
     double diff = DBL_MAX;
-    while (iter < max_iters && diff > thresh) {
+    while (iter < max_iters && (diff / (double)V) > thresh) {
         iter += 1;
-        diff = DoCollapsedStep(docs, Nwk, Nmk, Nk, PHIS, Ns, M, K, V, weights);
+        diff = DoCollapsedStep(docs, Nwk, Nmk, Nk, PHIS, Ns, M, K, V, weights, true);
     }
 
     if (iter == max_iters) {
@@ -380,8 +378,23 @@ double *weighted_cvb_zero(int **docs, int *Ns, double *alpha, double *eta, int K
         }
     }
 
+    //Normalize Nmk so it becomes GAMMA
+    double col_sum;
+    for (int m = 0; m < M; m++) {
+        //Make col sums
+        col_sum = 0.0;
+        for (int k = 0; k < K; k++) {
+            col_sum += *(Nmk + m*K + k);
+        }
+
+        //Normalize
+        for (int k = 0; k < K; k++) {
+            *(Nmk + m*K + k) /= col_sum;
+        }
+    }
+
+
     //Free memory
-    free(Nmk);
     free(Nk);
     for (int m = 0; m < M; m++) {
         free(*(PHIS + m));
@@ -390,7 +403,95 @@ double *weighted_cvb_zero(int **docs, int *Ns, double *alpha, double *eta, int K
     free(docs);
     free(Ns);
 
-    return Nwk;
+    double **ret = (double **)malloc(2*sizeof(double *));
+    
+    *(ret) = Nwk;
+    *(ret + 1) = Nmk;
+    
+    return ret;
+
+}
+
+/*
+ * Function: weighted_cvb_zero_predict
+ * ----------------------------------------------
+ * Given a word-topic matrix, predict topic assignments of new documents.
+ *
+ * docs: A list of integer arrays, the indices in the vocab for the words in each doc
+ *
+ * Ns: An array of length M, giving the length of each document.
+ *
+ * alpha: A double array containing the topic prevalence prior params
+ *
+ * eta: A double array containing the word prevalence prior params
+ *
+ * K: The number of topics
+ *
+ * V: The size of the vocab
+ *
+ * M: The number of docs
+ *
+ * thresh: The threshold for convergence; if the maximal abs difference among all variational params is below this on one iteration, the algorithm will converge successfully.
+ *
+ * max_iters: The maximum allowable iterations.
+ * 
+ * seed: The seed for random number generation.
+ */
+double *weighted_cvb_zero_predict(int **docs, double *BETA, int *Ns, double *alpha, double *eta, int K, int V, int M, double thresh, int max_iters, int seed, double *weights_in) {
+    srand(seed);
+    //Normalize weights to sum to V, creating a copy so we don't spook the user.
+    double sum = 0.0;
+    for (int v = 0; v < V; v++) {
+        sum += *(weights_in + v);
+    }
+    double *weights = (double *)malloc(V * sizeof(double));
+    for (int v = 0; v < V; v++) {
+        *(weights + v) = *(weights_in + v) / sum * (double)V;
+    }
+
+    //Randomly init the word-topic assignments
+    double **PHIS = InitPHIS(docs, Ns, M, K, weights);
+
+    //Initialize our counts based on PHI
+    double *Nmk = InitNmk(PHIS, Ns, alpha, M, K);
+    double *Nk = InitNk(Nmk, M, K);
+
+    int iter = 0;
+    double diff = DBL_MAX;
+    while (iter < max_iters && (diff / (double)V) > thresh) {
+        iter += 1;
+        diff = DoCollapsedStep(docs, BETA, Nmk, Nk, PHIS, Ns, M, K, V, weights, false);
+    }
+
+    if (iter == max_iters) {
+        std::cout << "WARN: Convergence Failure in CVBZero -- Reached max_iters" << std::endl;
+    }
+
+    //Normalize Nmk so it becomes GAMMA
+    double col_sum;
+    for (int m = 0; m < M; m++) {
+        //Make col sums
+        col_sum = 0.0;
+        for (int k = 0; k < K; k++) {
+            col_sum += *(Nmk + m*K + k);
+        }
+
+        //Normalize
+        for (int k = 0; k < K; k++) {
+            *(Nmk + m*K + k) /= col_sum;
+        }
+    }
+
+    //Free memory
+    free(Nk);
+    for (int m = 0; m < M; m++) {
+        free(*(PHIS + m));
+    }
+    free(PHIS);
+    free(docs);
+    free(Ns);
+
+    return Nmk;
 
 }
 
@@ -416,7 +517,7 @@ double *weighted_cvb_zero(int **docs, int *Ns, double *alpha, double *eta, int K
  * seed: The seed for random number generation.
  */
 // [[Rcpp::export]]
-NumericMatrix r_weighted_cvb_zero(List docs_in, NumericVector alpha_in, NumericVector eta_in, int K, int V, double thresh, int max_iters, int seed, NumericVector weights_in) {
+List r_weighted_cvb_zero_inference(List docs_in, NumericVector alpha_in, NumericVector eta_in, int K, int V, double thresh, int max_iters, int seed, NumericVector weights_in) {
     //Turn the inputs into something consumeable by C
     //Store the hyperparams
     double *alpha = alpha_in.begin();
@@ -449,9 +550,77 @@ NumericMatrix r_weighted_cvb_zero(List docs_in, NumericVector alpha_in, NumericV
         *(docs + m) = doc;
     }
 
+    //Run the actual C script; unpack the results
+    double **c_ret = weighted_cvb_zero_inference(docs, Ns, alpha, eta, K, V, M, thresh, max_iters, seed,weights);
+    double *Nwk = *(c_ret);
+    double *Nmk = *(c_ret + 1);
+
+    //Create the return object.
+    //Note this automatically transposes the matrices.
+    List ret = List::create(Named("BETA") = NumericMatrix(K, V, Nwk), Named("GAMMA") = NumericMatrix(K, M, Nmk));
+
+    return ret;
+}
+
+/*
+ * Function: RCVBZero
+ * ----------------------------------------------
+ * An R function which wraps CVBZero, does inference on LDA using collapsed variaitonal bayes.
+ *
+ * docs: A list of integer arrays, the indices in the vocab for the words in each doc
+ *
+ * alpha_in: A double array containing the topic prevalence prior params
+ *
+ * eta_in: A double array containing the word prevalence prior params
+ *
+ * K: The number of topics
+ *
+ * V: The size of the vocab
+ *
+ * thresh: The threshold for convergence; if the maximal abs difference among all variational params is below this on one iteration, the algorithm will converge successfully.
+ *
+ * max_iters: The maximum allowable iterations.
+ * 
+ * seed: The seed for random number generation.
+ */
+// [[Rcpp::export]]
+NumericMatrix r_weighted_cvb_zero_predict(List docs_in, NumericMatrix BETA_in, NumericVector alpha_in, NumericVector eta_in, int K, int V, double thresh, int max_iters, int seed, NumericVector weights_in) {
+    //Turn the inputs into something consumeable by C
+    //Store the hyperparams
+    double *alpha = alpha_in.begin();
+    double *eta = eta_in.begin();
+    double *weights = weights_in.begin();
+    double *BETA = BETA_in.begin();
+
+    //Store the documents and their sizes.
+    int M = docs_in.size();
+    // The inplace method is producing a strange bug at present, but this is quicker.
+    //IntegerVector current;
+    //int **docs = (int **)malloc(M * sizeof(int *)); 
+    //int *Ns = (int *) malloc(M * sizeof(int));
+    //for (int m = 0; m < M; m++) {
+    //    current = docs_in(m);
+    //    *(docs + m) = (int *)current.begin();
+    //    *(Ns + m) = (int)current.size();
+    //}
+    //Copy the docs to avoid the world's weirdest bug.
+    int **docs = (int **)malloc(M * sizeof(int *));
+    IntegerVector current;
+    int *Ns = (int *)malloc(M * sizeof(int));
+    int *doc;
+    for (int m = 0; m < M; m++) {
+        current = docs_in(m);
+        *(Ns + m) = current.size();
+        doc = (int *)malloc(*(Ns + m) * sizeof(int));
+        for (int n = 0; n < *(Ns + m); n++) {
+            *(doc + n) = current(n);
+        }
+        *(docs + m) = doc;
+    }
+
     //Run the actual C script.
-    double *Nwk = weighted_cvb_zero(docs, Ns, alpha, eta, K, V, M, thresh, max_iters, seed,weights);
+    double *Nmk = weighted_cvb_zero_predict(docs, BETA, Ns, alpha, eta, K, V, M, thresh, max_iters, seed,weights);
 
     //Note this automatically transposes the matrix, as desired.
-    return NumericMatrix(K, V, Nwk);
+    return NumericMatrix(K, M, Nmk);
 }
