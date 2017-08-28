@@ -72,7 +72,7 @@ double **InitPHIS(int **docs, int *Ns, int M, int K, double *weights) {
         doc = *(docs + m);
         for (int n = 0; n < N; n++) {
             row_sum = 0.0;
-            w = *(doc + n);
+            w = *(doc + n) - 1;
             //Draw some uniform values
             for (int k = 0; k < K; k++) {
                 r_num = RandUnif();
@@ -354,7 +354,7 @@ double **weighted_cvb_zero_inference(int **docs, int *Ns, double *alpha, double 
 
     int iter = 0;
     double diff = DBL_MAX;
-    while (iter < max_iters && (diff / (double)V) > thresh) {
+    while (iter < max_iters && diff > thresh) {
         iter += 1;
         diff = DoCollapsedStep(docs, Nwk, Nmk, Nk, PHIS, Ns, M, K, V, weights, true);
     }
@@ -458,7 +458,7 @@ double *weighted_cvb_zero_predict(int **docs, double *BETA, int *Ns, double *alp
 
     int iter = 0;
     double diff = DBL_MAX;
-    while (iter < max_iters && (diff / (double)V) > thresh) {
+    while (iter < max_iters && diff > thresh) {
         iter += 1;
         diff = DoCollapsedStep(docs, BETA, Nmk, Nk, PHIS, Ns, M, K, V, weights, false);
     }
