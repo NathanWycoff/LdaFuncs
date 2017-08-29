@@ -51,6 +51,7 @@ void MinRep(List docs_in, int V) {
                     std::cout << current(ni);
                     std::cout << ", ";
                 }
+                std::cout << std::endl;
                 return;
             }
         }
