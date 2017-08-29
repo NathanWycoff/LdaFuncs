@@ -9,7 +9,3 @@ r_weighted_cvb_zero_predict <- function(docs_in, BETA_in, alpha_in, eta_in, K, V
     .Call(`_LdaFuncs_r_weighted_cvb_zero_predict`, docs_in, BETA_in, alpha_in, eta_in, K, V, thresh, max_iters, seed, weights_in)
 }
 
-rcpp_hello_world <- function() {
-    .Call(`_LdaFuncs_rcpp_hello_world`)
-}
-

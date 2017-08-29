@@ -127,7 +127,6 @@ double *InitNwk(double **PHIS, int **docs, int *Ns, double * eta, int M, int K, 
     int N, w;
     double *PHI;
     int *doc;
-    double val1, val2;
     for (int m = 0; m < M; m++) {
         N = *(Ns + m);
         PHI = *(PHIS + m);
