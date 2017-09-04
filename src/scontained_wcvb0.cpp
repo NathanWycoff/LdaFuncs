@@ -383,12 +383,12 @@ double **weighted_cvb_zero_inference(int **docs, int *Ns, double *alpha, double 
         //Make row sums
         row_sum = 0.0;
         for (int v = 0; v < V; v++) {
-            row_sum += *(Nmk + v*K + k);
+            row_sum += *(Nwk + v*K + k);
         }
 
         //Normalize
         for (int v = 0; v < V; v++) {
-            *(Nmk + m*K + k) /= row_sum;
+            *(Nwk + v*K + k) /= row_sum;
         }
     }
 
