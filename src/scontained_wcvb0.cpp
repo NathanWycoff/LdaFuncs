@@ -371,47 +371,26 @@ double **weighted_cvb_zero_inference(int **docs, int *Ns, double *alpha, double 
     while (iter < max_iters && diff > thresh) {
         iter += 1;
         diff = DoCollapsedStep(docs, Nwk, Nmk, Nk, PHIS, Ns, M, K, V, weights, true);
-        double sum = 0.0;
-        for (int k = 0; k < K; k++) {
-            for (int v = 0; v < V; v++) {
-                sum += *(Nwk + v*K + k);
-            }
-        }
-
-        //Figure out the normalizing constants so we can check convergence.
-        for (int k = 0; k < K; k++) {
-            //Make row sums
-            *(row_sums + k) = 0.0;
-            for (int v = 0; v < V; v++) {
-                *(row_sums + k) += *(Nwk + v*K + k);
-            }
-        }
-        //Figure out the normalizing constants so we can check convergence, this time for the old Nwk
-        for (int k = 0; k < K; k++) {
-            //Make row sums
-            *(old_row_sums + k) = 0.0;
-            for (int v = 0; v < V; v++) {
-                *(old_row_sums + k) += *(old_Nwk + v*K + k);
-            }
-        }
-
-        diff = 0.0;
-        for (int k = 0; k < K; k++) {
-            for (int v = 0; v < V; v++) {
-                new_val = *(Nwk + v*K + k) / *(row_sums + k);
-                old_val = *(old_Nwk + v*K + k) / *(old_row_sums + k);
-                current_diff = fabs(new_val - old_val);
-                if (current_diff > diff) {
-                    diff = current_diff;
-                }
-            }
-        }
-
     }
 
    // if (iter == max_iters) {
    //     printf("WARN: Convergence Failure in CVBZero -- Reached max_iters");
    // }
+
+    //Normalize Nwk so it becomes BETA
+    double row_sum;
+    for (int k = 0; k < K; k++) {
+        //Make row sums
+        row_sum = 0.0;
+        for (int v = 0; v < V; v++) {
+            row_sum += *(Nmk + v*K + k);
+        }
+
+        //Normalize
+        for (int v = 0; v < V; v++) {
+            *(Nmk + m*K + k) /= row_sum;
+        }
+    }
 
     //Normalize Nmk so it becomes GAMMA
     double col_sum;
