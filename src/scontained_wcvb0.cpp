@@ -265,7 +265,7 @@ double DoCollapsedStep(int **docs, double *Nwk, double *Nmk, double *Nk, double 
 
                 //Calculate something propto the expected topic assignments
                 if (do_inference) {
-                vocab_part = *(Nwk + w * K + k) / *(Nk + k);
+                    vocab_part = *(Nwk + w * K + k) / *(Nk + k);
                 } else {
                     vocab_part = *(Nwk + w * K + k);
                 }
@@ -370,7 +370,9 @@ double **weighted_cvb_zero_inference(int **docs, int *Ns, double *alpha, double 
     double new_val, old_val, current_diff;
     while (iter < max_iters && diff > thresh) {
         iter += 1;
+        printf("Iter baby");
         diff = DoCollapsedStep(docs, Nwk, Nmk, Nk, PHIS, Ns, M, K, V, weights, true);
+        printf("%f", diff);
     }
 
    // if (iter == max_iters) {
