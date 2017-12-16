@@ -1,16 +1,15 @@
-/* This file contains an implementation of the Zeroth Order Tayler approximation to the Collapsed Variational Bayes algorithm for Latent Dirichlet Allocation, referred to as CVB0, with a modification to allow term weighting.
- *
+/*
+ * An Rcpp wrapper for weighted_cvb0.c
  *
  * @author Nathan Wycoff
  * @since August 11 2017
- *
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <float.h>
 #include <stdbool.h>
-#include "weighted_cvb0.h"
+#include <math.h>
 
 /*
  * Function: RandUnif
@@ -76,7 +75,7 @@ double **InitPHIS(int **docs, int *Ns, int M, int K, double *weights) {
             w = *(doc + n) - 1;
             //Draw some uniform values
             for (int k = 0; k < K; k++) {
-                r_num = RandUnif();
+                r_num = k + 1;
                 row_sum += r_num;
                 *(PHI + n*K + k) = r_num;
             }
@@ -246,6 +245,7 @@ double DoCollapsedStep(int **docs, double *Nwk, double *Nmk, double *Nk, double 
     double *PHI;
     int *doc;
     double max_change = 0.0;
+    printf("\nOh shit this is a new iteration\n");
     for (int m = 0; m < M; m++) {
         N = *(Ns + m);
         PHI = *(PHIS + m);
@@ -269,11 +269,18 @@ double DoCollapsedStep(int **docs, double *Nwk, double *Nmk, double *Nk, double 
                 } else {
                     vocab_part = *(Nwk + w * K + k);
                 }
+
+                //printf("%s%i,%i,%i\n", "meta (m,n,k): ", m, n, k);
                 doc_part = *(Nmk + m*K + k);
                 new_val = vocab_part * doc_part;
 
+                //printf("%s%f\n", "doc_part: ", doc_part);
+                //printf("%s%f\n", "vocab_part: ", vocab_part);
+
                 *(PHI + n*K + k) = new_val;
                 row_sum += new_val;
+
+                //printf("%s%f\n", "new_val: ", new_val);
             }
 
             //Normalize PHIs
@@ -352,30 +359,53 @@ double **weighted_cvb_zero_inference(int **docs, int *Ns, double *alpha, double 
     double *Nmk = InitNmk(PHIS, Ns, alpha, M, K);
     double *Nk = InitNk(Nmk, M, K);
 
+    //Create a copy so we can check what for convergence
+    double *old_Nwk = (double *)malloc(K*V*sizeof(double));
+    for (int k = 0; k < K; k++) {
+        for (int v = 0; v < V; v++) {
+            *(old_Nwk + v*K + k) = *(Nwk + v*K + k);
+        }
+    }
+
     int iter = 0;
     double diff = DBL_MAX;
+    double *row_sums = (double *)malloc(K * sizeof(double));//For convergence purposes
+    double *old_row_sums = (double *)malloc(K * sizeof(double));//For convergence purposes
+    double new_val, old_val, current_diff;
     while (iter < max_iters && diff > thresh) {
         iter += 1;
         diff = DoCollapsedStep(docs, Nwk, Nmk, Nk, PHIS, Ns, M, K, V, weights, true);
+        printf("%s%f\n", "Nwk[1,1] Val:", *(Nwk + 3));
+        double sum = 0.0;
+        for (int k = 0; k < K; k++) {
+            for (int v = 0; v < V; v++) {
+                sum += *(Nwk + v*K + k);
+            }
+        }
+        printf("%s%f\n", "sun of Nwk:", sum);
+
+        //Figure out the normalizing constants so we can check convergence.
+        for (int k = 0; k < K; k++) {
+            //Make row sums
+            *(row_sums + k) = 0.0;
+            for (int v = 0; v < V; v++) {
+                *(row_sums + k) += *(Nwk + v*K + k);
+            }
+        }
+        //Figure out the normalizing constants so we can check convergence, this time for the old Nwk
+        for (int k = 0; k < K; k++) {
+            //Make row sums
+            *(old_row_sums + k) = 0.0;
+            for (int v = 0; v < V; v++) {
+                *(old_row_sums + k) += *(old_Nwk + v*K + k);
+            }
+        }
+
+        printf("%s%f\n", "OK here\'s the diff: ", diff);
     }
 
     if (iter == max_iters) {
         printf("WARN: Convergence Failure in CVBZero -- Reached max_iters");
-    }
-
-    //Normalize Nwk so it becomes BETA
-    double row_sum;
-    for (int k = 0; k < K; k++) {
-        //Make row sums
-        row_sum = 0.0;
-        for (int v = 0; v < V; v++) {
-            row_sum += *(Nwk + v*K + k);
-        }
-
-        //Normalize
-        for (int v = 0; v < V; v++) {
-            *(Nwk + v*K + k) /= row_sum;
-        }
     }
 
     //Normalize Nmk so it becomes GAMMA

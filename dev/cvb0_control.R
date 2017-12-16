@@ -43,9 +43,9 @@ gen.lda <- function(K, V, M, N.mu, eta, alpha) {
 
 #Example Useage.
 K <- 2
-V <- 4
+V <- 7000
 M <- 20
-N.mu <- 100
+N.mu <- 10
 eta <- rep(1, V)
 alpha <- rep(1, K)
 ret <- gen.lda(K, V, M, N.mu, eta, alpha)
@@ -55,9 +55,14 @@ BETA <- ret$BETA
 THETA <- ret$THETA
 
 
-thresh <- -1
+thresh <- 1e-8
 iters <- 10000
 seed <- 1234
 weights <- rep(1,V)
 
-BETA_in <- wLDA(docs, alpha, eta, K, V, thresh, iters, seed, weights)
+sourceCpp('scontained_wcvb0.cpp')
+result <- r_weighted_cvb_zero_inference(docs, alpha, eta, K, V, thresh, iters, seed, weights)
+BETA_est <- result$BETA
+BETA_est <- BETA_est / rowSums(BETA_est)
+print(BETA_est)
+#BETA_in <- wLDA(docs, alpha, eta, K, V, thresh, iters, seed, weights)

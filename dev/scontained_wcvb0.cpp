@@ -10,8 +10,8 @@
 #include <stdlib.h>
 #include <float.h>
 #include <stdbool.h>
-#include "weighted_cvb0.h"
 using namespace Rcpp;
+
 
 /*
  * Function: RandUnif
@@ -310,6 +310,7 @@ double DoCollapsedStep(int **docs, double *Nwk, double *Nmk, double *Nk, double 
         }
     }
 
+    printf("Change: %f", max_change);
     return max_change;
 }
 
@@ -377,6 +378,7 @@ double **weighted_cvb_zero_inference(int **docs, int *Ns, double *alpha, double 
     while (iter < max_iters && diff > thresh) {
         iter += 1;
         diff = DoCollapsedStep(docs, Nwk, Nmk, Nk, PHIS, Ns, M, K, V, weights, true);
+        printf("Heres the diff: %f", diff);
         printf("%s%f\n", "Nwk[1,1] Val:", *(Nwk + 3));
         double sum = 0.0;
         for (int k = 0; k < K; k++) {
@@ -403,17 +405,17 @@ double **weighted_cvb_zero_inference(int **docs, int *Ns, double *alpha, double 
             }
         }
 
-        diff = 0.0;
-        for (int k = 0; k < K; k++) {
-            for (int v = 0; v < V; v++) {
-                new_val = *(Nwk + v*K + k) / *(row_sums + k);
-                old_val = *(old_Nwk + v*K + k) / *(old_row_sums + k);
-                current_diff = fabs(new_val - old_val);
-                if (current_diff > diff) {
-                    diff = current_diff;
-                }
-            }
-        }
+        //diff = 0.0;
+        //for (int k = 0; k < K; k++) {
+        //    for (int v = 0; v < V; v++) {
+        //        new_val = *(Nwk + v*K + k) / *(row_sums + k);
+        //        old_val = *(old_Nwk + v*K + k) / *(old_row_sums + k);
+        //        current_diff = fabs(new_val - old_val);
+        //        if (current_diff > diff) {
+        //            diff = current_diff;
+        //        }
+        //    }
+        //}
 
         printf("%s%f\n", "OK here\'s the diff: ", diff);
     }
