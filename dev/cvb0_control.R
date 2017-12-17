@@ -67,33 +67,23 @@ BETA_est <- BETA_est / rowSums(BETA_est)
 print(BETA_est)
 #BETA_in <- wLDA(docs, alpha, eta, K, V, thresh, iters, seed, weights)
 
+
+####Try it with real data
+require(LdaFuncs)
 load('keylist_crescent.RData')
 
 #Example Useage.
-K <- 2
+K <- 10
 V <- length(vocab)
-eta <- rep(1, V)
-alpha <- rep(1, K)
-thresh <- 1e-8
+eta <- rep(0.1, V)
+alpha <- rep(0.5, K)
+thresh <- -1
 iters <- 1000
 seed <- 123
 weights <- rep(1, V)
 
-sourceCpp('scontained_wcvb0.cpp')
-result <- r_weighted_cvb_zero_inference(keylist, alpha, eta, K, V, thresh, iters, seed, weights)
+result <- wLDA(keylist, alpha, eta, K, V, thresh, iters, seed, weights)
 BETA_est <- result$BETA
 BETA_est <- BETA_est / rowSums(BETA_est)
 print(BETA_est)
-#BETA_in <- wLDA(docs, alpha, eta, K, V, thresh, iters, seed, weights)
-
-require(LdaFuncs)
-ret <- wLDA(keylist, alpha, eta, K, V, thresh, iters, seed, weights)
-BETA_est <- result$BETA
-BETA_est <- BETA_est / rowSums(BETA_est)
-print(BETA_est)
-
-wLDA <- function(docs, alpha, eta, K, V, thresh, iters, seed, weights) {
-    ret <- r_weighted_cvb_zero_inference(docs, alpha, eta, K, V, thresh, iters, seed, weights)
-    ret$GAMMA <- t(ret$GAMMA)
-    return(ret);
-}
+result$GAMMA

@@ -3,28 +3,29 @@
 \alias{LdaFuncs}
 \docType{package}
 \title{
-  A short title line describing what the package does
+    LdaFuncs
 }
 \description{
-  A more detailed description of what the package does. A length
-  of about one to five lines is recommended.
+    An Implementation of the CVB0 algorithm for inference on Latent Dirichlet Allocation topic models.
 }
 \details{
-  This section should provide a more detailed overview of how to use the
-  package, including the most important functions.
+    Implements weighting for each unique term, allowing words to differ in terms of how much influence they have in both topic formation and document-topic assignment.
 }
 \author{
-Your Name, email optional.
+Nathan Wycoff
 
-Maintainer: Your Name <your@email.com>
+Maintainer: Nathan Wycoff <nathanbrwycoff@gmail.com>
 }
 \references{
-  This optional section can contain literature or other references for
-  background information.
+    Blei D.M., Ng A.Y., Jordan M.I. (2003).
+    Latent Dirichlet Allocation.
+
+    Arthur Asuncion, Max Welling, Padhraic Smyth, Yee Whye Teh
+    On Smoothing and Inference for Topic Models
 }
-\keyword{ package }
+\keyword{TopicModeling}
 \seealso{
-  Optional links to other man pages
+    tm, TopicModel
 }
 \examples{
   \dontrun{

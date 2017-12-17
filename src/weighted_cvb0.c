@@ -1,15 +1,9 @@
-/*
- * An Rcpp wrapper for weighted_cvb0.c
- *
- * @author Nathan Wycoff
- * @since August 11 2017
- */
-
 #include <stdio.h>
 #include <stdlib.h>
-#include <float.h>
 #include <stdbool.h>
+#include <float.h>
 #include <math.h>
+
 
 /*
  * Function: RandUnif
@@ -245,7 +239,6 @@ double DoCollapsedStep(int **docs, double *Nwk, double *Nmk, double *Nk, double 
     double *PHI;
     int *doc;
     double max_change = 0.0;
-    printf("\nOh shit this is a new iteration\n");
     for (int m = 0; m < M; m++) {
         N = *(Ns + m);
         PHI = *(PHIS + m);
@@ -375,14 +368,12 @@ double **weighted_cvb_zero_inference(int **docs, int *Ns, double *alpha, double 
     while (iter < max_iters && diff > thresh) {
         iter += 1;
         diff = DoCollapsedStep(docs, Nwk, Nmk, Nk, PHIS, Ns, M, K, V, weights, true);
-        printf("%s%f\n", "Nwk[1,1] Val:", *(Nwk + 3));
         double sum = 0.0;
         for (int k = 0; k < K; k++) {
             for (int v = 0; v < V; v++) {
                 sum += *(Nwk + v*K + k);
             }
         }
-        printf("%s%f\n", "sun of Nwk:", sum);
 
         //Figure out the normalizing constants so we can check convergence.
         for (int k = 0; k < K; k++) {
@@ -401,7 +392,25 @@ double **weighted_cvb_zero_inference(int **docs, int *Ns, double *alpha, double 
             }
         }
 
-        printf("%s%f\n", "OK here\'s the diff: ", diff);
+        //Check what the biggest change was in the topic-word matrix
+        diff = 0.0;
+        for (int k = 0; k < K; k++) {
+            for (int v = 0; v < V; v++) {
+                new_val = *(Nwk + v*K + k) / *(row_sums + k);
+                old_val = *(old_Nwk + v*K + k) / *(old_row_sums + k);
+                current_diff = fabs(new_val - old_val);
+                if (current_diff > diff) {
+                    diff = current_diff;
+                }
+            }
+        }
+
+        //Store the new vals in the old
+        for (int k = 0; k < K; k++) {
+            for (int v = 0; v < V; v++) {
+                *(old_Nwk + v*K + k) = *(Nwk + v*K + k);
+            }
+        }
     }
 
     if (iter == max_iters) {
