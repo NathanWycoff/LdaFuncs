@@ -2,7 +2,7 @@
 % Please edit documentation in R/gen_lda.R
 \name{gen.lda}
 \alias{gen.lda}
-\title{Generate documents from the Latent Dirichlet Allocaiton model.}
+\title{Generate documents from the weighted Latent Dirichlet Allocaiton model.}
 \usage{
 gen.lda(K, V, M, N.mu, eta, alpha)
 }
@@ -19,22 +19,25 @@ gen.lda(K, V, M, N.mu, eta, alpha)
 
 \item{alpha}{The hyperparameter for the Dirichlet prior associated with the document by term matrix. May be a vector of length K. If a single value is passed, a K-vector will be filled with that value.}
 
+\item{Pi}{A numeric vector of length V, the weight of each token.}
+
 \item{V}{The size of the vocabuary, an integer. The vocabulary itself does not need to be passed, but will simply be the integers 1:V.}
 }
 \value{
-A list containing docs, a list of the integer vectors, Ns, the integer vectors representing document length, BETA, the topic-by-word matrix (rows sum to one, nonnegative elements), and GAMMA, the document-by-topic matrix (rows sum to one, nonnegative elements).
+A list containing docs, a list of the integer vectors, Ns, the integer vectors representing document length, BETA, the topic-by-word matrix (rows sum to one, nonnegative elements), and THETA, the document-by-topic matrix (rows sum to one, nonnegative elements).
 }
 \description{
-Generate documents from the Latent Dirichlet Allocaiton model.
+Generate documents from the weighted Latent Dirichlet Allocaiton model.
 }
 \examples{
 K <- 2
 V <- 7000
 M <- 20
 N.mu <- 10
+Pi <- (1:K) / K
 eta <- rep(1, V)
 alpha <- rep(1, K)
-ret <- gen.lda(K, V, M, N.mu, eta, alpha)
+ret <- gen.lda(K, V, M, N.mu, Pi, eta, alpha)
 docs <- ret$docs
 Ns <- ret$Ns
 BETA <- ret$BETA

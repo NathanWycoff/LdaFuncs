@@ -36,7 +36,7 @@ Do inference on a Latent Dirichlet Allocation model using Collapsed Variational 
 K <- 2
 V <- 4
 M <- 20
-N.mu <- 10
+N.mu <- 100
 eta <- rep(1, V)
 alpha <- rep(1, K)
 
