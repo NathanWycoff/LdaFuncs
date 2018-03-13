@@ -16,6 +16,7 @@ set.seed(123)
 #' @param alpha The hyperparameter for the Dirichlet prior associated with the document by term matrix. May be a vector of length K. If a single value is passed, a K-vector will be filled with that value.
 #' @param eta The hyperparameter for the Dirichlet prior associated with the document by topic matrix. May be a vector of length V. If a single value is passed, a V-vector will be filled with that value.
 #' @param V The size of the vocabuary, an integer. The vocabulary itself does not need to be passed, but will simply be the integers 1:V.
+#' @param keep_z Should the topic assignments of each word be retained? Useful for debugging purposes.
 #' @return A list containing docs, a list of the integer vectors, Ns, the integer vectors representing document length, BETA, the topic-by-word matrix (rows sum to one, nonnegative elements), and THETA, the document-by-topic matrix (rows sum to one, nonnegative elements).
 #' @examples
 #' K <- 2
@@ -30,13 +31,17 @@ set.seed(123)
 #' Ns <- ret$Ns
 #' BETA <- ret$BETA
 #' THETA <- ret$THETA
-gen.lda <- function(K, V, M, N.mu, Pi, eta, alpha) {
+gen.lda <- function(K, V, M, N.mu, Pi, eta, alpha, keep_z = FALSE) {
     #Generate automatic priors if unspecified
     if (missing(eta)) {
         eta <- rep(1, V)
     }
     if (missing(alpha)) {
         alpha <- rep(1, K)
+    }
+
+    if (V <= 1) {
+        stop("Your vocabulary had probably ought to be a little bit bigger. Set V to a positive integer greater than 1")
     }
 
     #Create the topics
@@ -50,6 +55,7 @@ gen.lda <- function(K, V, M, N.mu, Pi, eta, alpha) {
     #Storage for docs
     docs <- list()
     THETA <- matrix(0, nrow = M, ncol = K)
+    if (keep_z) Z <- list()
 
     #Generate the actual docs
     for (m in 1:M) {
@@ -57,20 +63,25 @@ gen.lda <- function(K, V, M, N.mu, Pi, eta, alpha) {
         theta <- theta / sum(theta)
         THETA[m,] <- theta
         docs[[m]] <- rep(0, Ns[m])
+        if (keep_z) Z[[m]] <- rep(0, Ns[m])
 
         # Prepare some probabilities specific to this document due to term weighting
         tB <- apply(BETA, 2, function(col) col * theta)
-        wtB <- apply(BETA, 1, function(row) row^Pi)
-        p_w <- rowSums(wtB)
+        wtB <- t(apply(BETA, 1, function(row) row^Pi))
+        p_w <- colSums(wtB)
         for (n in 1:Ns[m]) {
             # The standard LDA sampling method:
             #z <- rmultinom(1, 1, theta)
             #w <- which(rmultinom(1, 1, t(z) %*% BETA)==1)
             # Is equivalent to this (if weights are all 1):
             w <- which(rmultinom(1, 1, p_w) == 1)
+            z <- which(rmultinom(1, 1, wtB[,w] / sum(wtB[,w])) == 1)
             docs[[m]][n] <- w
+            if (keep_z) Z[[m]][n] <- z
         }
     }
 
-    return(list('docs' = docs, 'Ns' = Ns, 'BETA' = BETA, 'THETA' = THETA, 'Pi' = Pi))
+    ret <- list('docs' = docs, 'Ns' = Ns, 'BETA' = BETA, 'THETA' = THETA, 'Pi' = Pi)
+    if (keep_z) ret$Z <- Z
+    return(ret)
 }
