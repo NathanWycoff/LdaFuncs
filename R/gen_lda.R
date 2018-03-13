@@ -67,7 +67,7 @@ gen.lda <- function(K, V, M, N.mu, Pi, eta, alpha) {
             #z <- rmultinom(1, 1, theta)
             #w <- which(rmultinom(1, 1, t(z) %*% BETA)==1)
             # Is equivalent to this (if weights are all 1):
-            w <- which(rmultinom(1, 1, p_w))
+            w <- which(rmultinom(1, 1, p_w) == 1)
             docs[[m]][n] <- w
         }
     }
