@@ -1,4 +1,4 @@
-!/usr/bin/Rscript
+#!/usr/bin/Rscript
 #  gen_lda.R Author "Nathan Wycoff <nathanbrwycoff@gmail.com>" Date 12.16.2017
 
 #Imports
