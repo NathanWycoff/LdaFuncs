@@ -30,7 +30,7 @@ set.seed(123)
 #' Ns <- ret$Ns
 #' BETA <- ret$BETA
 #' THETA <- ret$THETA
-gen.lda <- function(K, V, M, N.mu, eta, alpha) {
+gen.lda <- function(K, V, M, N.mu, Pi, eta, alpha) {
     #Generate automatic priors if unspecified
     if (missing(eta)) {
         eta <- rep(1, V)

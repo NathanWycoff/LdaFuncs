@@ -4,7 +4,7 @@
 \alias{gen.lda}
 \title{Generate documents from the weighted Latent Dirichlet Allocaiton model.}
 \usage{
-gen.lda(K, V, M, N.mu, eta, alpha)
+gen.lda(K, V, M, N.mu, Pi, eta, alpha)
 }
 \arguments{
 \item{K}{The number of topics from which to generate.}
@@ -15,11 +15,11 @@ gen.lda(K, V, M, N.mu, eta, alpha)
 
 \item{N.mu}{The average number of words per document. Follows a Poisson(N.mu - 1) + 1 distribution (to ensure that no docs will be empty).}
 
+\item{Pi}{A numeric vector of length V, the weight of each token.}
+
 \item{eta}{The hyperparameter for the Dirichlet prior associated with the document by topic matrix. May be a vector of length V. If a single value is passed, a V-vector will be filled with that value.}
 
 \item{alpha}{The hyperparameter for the Dirichlet prior associated with the document by term matrix. May be a vector of length K. If a single value is passed, a K-vector will be filled with that value.}
-
-\item{Pi}{A numeric vector of length V, the weight of each token.}
 
 \item{V}{The size of the vocabuary, an integer. The vocabulary itself does not need to be passed, but will simply be the integers 1:V.}
 }
