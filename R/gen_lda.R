@@ -1,4 +1,4 @@
-#!/usr/bin/Rscript
+!/usr/bin/Rscript
 #  gen_lda.R Author "Nathan Wycoff <nathanbrwycoff@gmail.com>" Date 12.16.2017
 
 #Imports
@@ -39,7 +39,6 @@ gen.lda <- function(K, V, M, N.mu, Pi, eta, alpha, keep_z = FALSE) {
     if (missing(alpha)) {
         alpha <- rep(1, K)
     }
-
     if (V <= 1) {
         stop("Your vocabulary had probably ought to be a little bit bigger. Set V to a positive integer greater than 1")
     }
@@ -67,7 +66,7 @@ gen.lda <- function(K, V, M, N.mu, Pi, eta, alpha, keep_z = FALSE) {
 
         # Prepare some probabilities specific to this document due to term weighting
         tB <- apply(BETA, 2, function(col) col * theta)
-        wtB <- t(apply(BETA, 1, function(row) row^Pi))
+        wtB <- t(apply(tB, 1, function(row) row^Pi))
         p_w <- colSums(wtB)
         for (n in 1:Ns[m]) {
             # The standard LDA sampling method:
@@ -75,7 +74,7 @@ gen.lda <- function(K, V, M, N.mu, Pi, eta, alpha, keep_z = FALSE) {
             #w <- which(rmultinom(1, 1, t(z) %*% BETA)==1)
             # Is equivalent to this (if weights are all 1):
             w <- which(rmultinom(1, 1, p_w) == 1)
-            z <- which(rmultinom(1, 1, wtB[,w] / sum(wtB[,w])) == 1)
+            z <- which(rmultinom(1, 1, wtB[,w]) == 1)
             docs[[m]][n] <- w
             if (keep_z) Z[[m]][n] <- z
         }
