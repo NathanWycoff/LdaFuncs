@@ -6,12 +6,13 @@ require(Rcpp)
 
 set.seed(123)
 
-#' Generate documents from the Latent Dirichlet Allocaiton model.
+#' Generate documents from the weighted Latent Dirichlet Allocaiton model.
 #'
 #' @param K The number of topics from which to generate.
 #' @param V The size of the vocabulary.
 #' @param M The number of documents to generate.
 #' @param N.mu The average number of words per document. Follows a Poisson(N.mu - 1) + 1 distribution (to ensure that no docs will be empty).
+#' @param Pi A numeric vector of length V, the weight of each token.
 #' @param alpha The hyperparameter for the Dirichlet prior associated with the document by term matrix. May be a vector of length K. If a single value is passed, a K-vector will be filled with that value.
 #' @param eta The hyperparameter for the Dirichlet prior associated with the document by topic matrix. May be a vector of length V. If a single value is passed, a V-vector will be filled with that value.
 #' @param V The size of the vocabuary, an integer. The vocabulary itself does not need to be passed, but will simply be the integers 1:V.
@@ -21,9 +22,10 @@ set.seed(123)
 #' V <- 7000
 #' M <- 20
 #' N.mu <- 10
+#' Pi <- (1:K) / K
 #' eta <- rep(1, V)
 #' alpha <- rep(1, K)
-#' ret <- gen.lda(K, V, M, N.mu, eta, alpha)
+#' ret <- gen.lda(K, V, M, N.mu, Pi, eta, alpha)
 #' docs <- ret$docs
 #' Ns <- ret$Ns
 #' BETA <- ret$BETA
@@ -55,12 +57,20 @@ gen.lda <- function(K, V, M, N.mu, eta, alpha) {
         theta <- theta / sum(theta)
         THETA[m,] <- theta
         docs[[m]] <- rep(0, Ns[m])
+
+        # Prepare some probabilities specific to this document due to term weighting
+        tB <- apply(BETA, 2, function(col) col * theta)
+        wtB <- apply(BETA, 1, function(row) row^Pi)
+        p_w <- rowSums(wtB)
         for (n in 1:Ns[m]) {
-            z <- rmultinom(1, 1, theta)
-            w <- which(rmultinom(1, 1, t(z) %*% BETA)==1)
+            # The standard LDA sampling method:
+            #z <- rmultinom(1, 1, theta)
+            #w <- which(rmultinom(1, 1, t(z) %*% BETA)==1)
+            # Is equivalent to this (if weights are all 1):
+            w <- which(rmultinom(1, 1, p_w))
             docs[[m]][n] <- w
         }
     }
 
-    return(list('docs' = docs, 'Ns' = Ns, 'BETA' = BETA, 'THETA' = THETA))
+    return(list('docs' = docs, 'Ns' = Ns, 'BETA' = BETA, 'THETA' = THETA, 'Pi' = Pi))
 }
